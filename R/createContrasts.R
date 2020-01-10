@@ -1,7 +1,18 @@
 #' @import limma
 NULL
 
-
+#' Creates contrasts for limma-voom / edgeR and DESeq2
+#'
+#' @param samples The samples description data frame from which the contrasts are to be constructed
+#' @param groups The column names in the `samples` data frame from which contrasts will be constructed
+#' @param contrastType One of `limma` or `DESeq2`
+#' @param interactions `FALSE` by default. If `TRUE`, interaction terms are also returned. Only supports two-way interactions and will throw an error if any group has more than two factor levels.
+#' @param contrastLevel An integer which can take values from 1 to the numer of groups. If it is 1, only top-level contrasts are returned. Defaults to the number of groups.
+#'
+#' @return A named character vector (for `limma`) or list (for `DESeq2`) with the contrasts
+#' @export
+#'
+#' @examples
 createContrasts <- function(samples, groups, contrastType = "limma", interactions = FALSE, contrastLevel = NULL) {
 
   # uses some functions from limma. Also check arguments.
