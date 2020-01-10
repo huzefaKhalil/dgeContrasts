@@ -15,16 +15,16 @@ createContrasts(
 \arguments{
 \item{samples}{The samples description data frame from which the contrasts are to be constructed}
 
-\item{groups}{The column names in the `samples` data frame from which contrasts will be constructed}
+\item{groups}{The column names in the \code{samples} data frame from which contrasts will be constructed}
 
-\item{contrastType}{One of `limma` or `DESeq2`}
+\item{contrastType}{One of \code{limma} or \code{DESeq2}}
 
-\item{interactions}{`FALSE` by default. If `TRUE`, interaction terms are also returned. Only supports two-way interactions and will throw an error if any group has more than two factor levels.}
+\item{interactions}{\code{FALSE} by default. If \code{TRUE}, interaction terms are also returned. Only supports two-way interactions and will throw an error if any group has more than two factor levels.}
 
 \item{contrastLevel}{An integer which can take values from 1 to the numer of groups. If it is 1, only top-level contrasts are returned. Defaults to the number of groups.}
 }
 \value{
-A named character vector (for `limma`) or list (for `DESeq2`) with the contrasts
+A named character vector (for \code{limma}) or list (for \code{DESeq2}) with the contrasts
 }
 \description{
 Creates contrasts for limma-voom / edgeR and DESeq2
