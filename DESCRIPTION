@@ -1,0 +1,15 @@
+Package: dgeContrasts
+Type: Package
+Title: Create contrasts for use with Differential Gene Expression Analysis packages such as edgeR, limma-voom and DESeq2
+Version: 0.1.0
+Author: Huzefa Khalil
+Maintainer: Huzefa Khalil <huzefa.khalil@umich.edu>
+Description: The package provides a function to create contrasts for use with Differential Gene Expression Analysis packages such as edgeR, limma-voom and DESeq2. Two-way interactions are supported, but only for factors with two levels. The script can handle unbalanced designs as well. Contrasts can be created for all possible comparisons.
+License: MIT
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 6.1.1
+Imports:
+  limma
+Collate:
+  'createContrasts.R'
