@@ -27,5 +27,6 @@ createContrasts(
 A named character vector (for \code{limma}) or list (for \code{DESeq2}) with the contrasts
 }
 \description{
-Creates contrasts for limma-voom / edgeR and DESeq2
+This function automatically generates contrasts which can be used with the popular
+differential gene expression pipelines of \code{limma-voom}, \code{edgeR} or \code{DESeq2}.
 }

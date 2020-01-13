@@ -3,6 +3,9 @@ NULL
 
 #' Creates contrasts for limma-voom / edgeR and DESeq2
 #'
+#' @description This function automatically generates contrasts which can be used with the popular
+#' differential gene expression pipelines of \code{limma-voom}, \code{edgeR} or \code{DESeq2}.
+#'
 #' @param samples The samples description data frame from which the contrasts are to be constructed
 #' @param groups The column names in the \code{samples} data frame from which contrasts will be constructed
 #' @param contrastType One of \code{limma} or \code{DESeq2}
@@ -49,14 +52,22 @@ createContrasts <- function(samples, groups, contrastType = "limma", interaction
   colnames(groupNames) <- groups
 
   # get the contrasts
-  comparisons <- unlist(allComparisons(groupNames, contrastLevel))
+  comparisons <- allComparisons(groupNames, contrastLevel, contrastType = contrastType)
+
+  if (contrastType == "limma") {
+    comparisons <- unlist(comparisons)
+  } else {
+    # for DESeq2, the comparisons are in lists, so cant just unlist it.
+    # The structure is of many nested lists... is quite compicated
+    comparisons <- unlistComparisons(comparisons)
+  }
 
   # if there is only one group, the output is a matrix... we need only the first column
   if (is.matrix(comparisons))
     comparisons <- comparisons[, 1]
 
   if (interactions == TRUE) {
-    interactions <- allInteractions(groupNames)
+    interactions <- allInteractions(groupNames, contrastType = contrastType)
     comparisons <- c(comparisons, interactions)
   }
 
@@ -65,7 +76,7 @@ createContrasts <- function(samples, groups, contrastType = "limma", interaction
 }
 
 # creates all comparisons... namely the number of factors
-allComparisons <- function(groupNames, level = 1) {
+allComparisons <- function(groupNames, level = 1, contrastType = "limma") {
 
   # levels cannot be more than the number of groups. In fact, should be one less than the number of groups
   if (level > ncol(groupNames))
@@ -89,7 +100,7 @@ allComparisons <- function(groupNames, level = 1) {
       sapply(1:level, function(lev) {
 
         # here, we will have to subset recursivle until the lowest level is reached...
-        subsetGroups(groupNames, terms = tc, compColumn = cn, level = lev)
+        subsetGroups(groupNames, terms = tc, compColumn = cn, level = lev, contrastType = contrastType)
       })
 
       #makeComparison(groupNames, tc, cn)
@@ -101,9 +112,9 @@ allComparisons <- function(groupNames, level = 1) {
 }
 
 # recusrsivle subsets the group matrix until only those we need are left to create a comparison.
-subsetGroups <- function(gNames, terms, compColumn, inTerm = NULL, level = 1) {
+subsetGroups <- function(gNames, terms, compColumn, inTerm = NULL, level = 1, contrastType = "limma") {
   if (level == 1) {
-    makeComparison(gNames, terms, compColumn, inTerm)
+    makeComparison(gNames, terms, compColumn, inTerm, contrastType = contrastType)
   } else {
     #browser()
 
@@ -124,13 +135,13 @@ subsetGroups <- function(gNames, terms, compColumn, inTerm = NULL, level = 1) {
       inTerm <- paste0(inTerm, ".", x)
       #browser()
 
-      subsetGroups(gNames[grps[, level] == x, ], terms, compColumn, inTerm, level)
+      subsetGroups(gNames[grps[, level] == x, ], terms, compColumn, inTerm, level, contrastType = contrastType)
     })
 
   }
 }
 
-makeComparison <- function(gNames, terms, colNumber, inTerm = NULL) {
+makeComparison <- function(gNames, terms, colNumber, inTerm = NULL, contrastType = "limma") {
   cName <- paste0(terms[1], ".vs.", terms[2])
 
   if (!is.null(inTerm))
@@ -154,8 +165,12 @@ makeComparison <- function(gNames, terms, colNumber, inTerm = NULL) {
 
   if (div == 0) return(NULL)  #Return NULL if a term doesn't exist
 
-  term1 <- paste(term1, collapse = " + ")
-  term1 <- paste0("((", term1, ") / ", div, ")")
+  if (contrastType == "limma") {
+    term1 <- paste(term1, collapse = " + ")
+    term1 <- paste0("((", term1, ") / ", div, ")")
+  } else {
+    term1 <- list(term1)
+  }
 
   # now do the same for term 2
   # get the rows of groupNames starting with each of these
@@ -172,21 +187,32 @@ makeComparison <- function(gNames, terms, colNumber, inTerm = NULL) {
   div <- length(term2)
   if (div == 0) return(NULL)  #Return NULL if a term doesn't exist
 
-  term2 <- paste(term2, collapse = " + ")
-  term2 <- paste0("((", term2, ") / ", div, ")")
+  if (contrastType == "limma") {
+    term2 <- paste(term2, collapse = " + ")
+    term2 <- paste0("((", term2, ") / ", div, ")")
+  } else {
+    term2 <- list(term2)
+  }
 
-  finalTerm <- paste(term1, "-", term2)
+  if (contrastType == "limma") {
+    finalTerm <- paste(term1, "-", term2)
+  } else {
+    finalTerm <- list(list(term1, term2))
+  }
 
   # set the name and return it
   setNames(finalTerm, cName)
 }
 
 
-allInteractions <- function(groupNames) {
+allInteractions <- function(groupNames, contrastType = "limma") {
+
+  if (contrastType != "limma") stop("Interaction terms not defined for DESeq2") # DESeq2 makes this a little complicated....
+
   possibleInteractions <- combn(colnames(groupNames), m = 2)
 
   allInteractions <- sapply(1:ncol(possibleInteractions), function(i) {
-    makeInteraction(groupNames, possibleInteractions[, i])
+    makeInteraction(groupNames, possibleInteractions[, i], contrastType = contrastType)
   })
 
   intNames <- apply(possibleInteractions, 2, paste, collapse = ".")
@@ -195,7 +221,7 @@ allInteractions <- function(groupNames) {
   setNames(allInteractions, intNames)
 }
 
-makeInteraction <- function(groupNames, intCols) {
+makeInteraction <- function(groupNames, intCols, contrastType = "limma") {
 
   # so, let's get the overall interaction.
   # then, loop over the other columns and get interaction in EACH factor.
@@ -233,18 +259,22 @@ makeInteraction <- function(groupNames, intCols) {
   paste(toSub, collapse = " - ")
 }
 
-
-# to reverse the sign for any particular comparison
+#' Reverse Comparison
+#'
+#' @description Reverses a comparison or a list of comparisons.
+#'
+#' @param co Either a named character vector or a named list as input.
+#'
+#' @return A named list of character vector containing the reversed comparisons
+#' @export
+#'
+#' @examples
 reverseComparison <- function(co) {
+
+  stopifnot(is.character(co) || is.list(co))
 
   # get the name
   nco <- names(co)
-
-  # loop over each name
-  co <- sapply(co, function(x) {
-    x <- strsplit(x, " - ")
-    paste(x[[1]][2], "-", x[[1]][1])
-  })
 
   nco <- sapply(nco, function(nx) {
 
@@ -261,7 +291,36 @@ reverseComparison <- function(co) {
     newName
   })
 
+  if (is.character(co)) {
+    co <- sapply(co, function(x) {
+      x <- strsplit(x, " - ")
+      paste(x[[1]][2], "-", x[[1]][1])
+    })
+  } else {
+    co <- lapply(co, function(x) {
+      list(x[[2]], x[[1]])
+    })
+  }
+
   setNames(co, nco)
 }
 
+unlistComparisons <- function(comparisons) {
+  comparisons <- unlist(comparisons, recursive = FALSE)
 
+  nco <- names(comparisons)
+
+  nco <- nco[nco != ""]
+
+  namedCo <- comparisons[nco]
+
+  namedCo <- lapply(namedCo, function(x) list(x[[1]][[1]], x[[2]][[1]]))
+
+  comparisons[nco] <- NULL
+
+  if (length(comparisons) == 0) {
+    return(namedCo)
+  } else {
+    return(c(namedCo, unlistComparisons(comparisons)))
+  }
+}
